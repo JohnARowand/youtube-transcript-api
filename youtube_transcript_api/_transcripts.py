@@ -265,7 +265,7 @@ class Transcript():
         :rtype [{'text': str, 'start': float, 'end': float}]:
         """
         return _TranscriptParser().parse(
-            self._http_client.get(self._url, self._timeout).text
+            self._http_client.get(self._url, timeout=self._timeout).text
         )
 
     def __str__(self):
