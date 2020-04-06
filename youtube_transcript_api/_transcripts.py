@@ -24,16 +24,16 @@ from ._settings import WATCH_URL
 
 
 class TranscriptListFetcher():
-    def __init__(self, http_client, timeout):
+    def __init__(self, http_client, timeout=None):
         self._http_client = http_client
         self._timeout = timeout
 
     def fetch(self, video_id):
         return TranscriptList.build(
             self._http_client,
-            self._timeout,
             video_id,
-            self._extract_captions_json(self._fetch_html(video_id), video_id)
+            self._extract_captions_json(self._fetch_html(video_id), video_id),
+            self._timeout
         )
 
     def _extract_captions_json(self, html, video_id):
@@ -86,20 +86,20 @@ class TranscriptList():
         self._translation_languages = translation_languages
 
     @staticmethod
-    def build(http_client, timeout, video_id, captions_json):
+    def build(http_client, video_id, captions_json, timeout=None):
         """
         Factory method for TranscriptList.
 
         :param http_client: http client which is used to make the transcript retrieving http calls
         :type http_client: requests.Session
-        :param timeout: server response seconds until timeout, two-tuple specifies connect and read timeouts respectively
-        :type timeout: float or two-tuple of floats
         :param video_id: the id of the video this TranscriptList is for
         :type video_id: str
         :param captions_json: the JSON parsed from the YouTube pages static HTML
         :type captions_json: dict
         :return: the created TranscriptList
         :rtype TranscriptList:
+        :param timeout: server response seconds until timeout, two-tuple specifies connect and read timeouts respectively
+        :type timeout: float or two-tuple of floats
         """
         translation_languages = [
             {
@@ -119,13 +119,13 @@ class TranscriptList():
 
             transcript_dict[caption['languageCode']] = Transcript(
                 http_client,
-                timeout,
                 video_id,
                 caption['baseUrl'],
                 caption['name']['simpleText'],
                 caption['languageCode'],
                 caption.get('kind', '') == 'asr',
-                translation_languages if caption.get('isTranslatable', False) else []
+                translation_languages if caption.get('isTranslatable', False) else [],
+                timeout
             )
 
         return TranscriptList(
@@ -225,15 +225,13 @@ class TranscriptList():
 
 
 class Transcript():
-    def __init__(self, http_client, video_id, url, timeout, language, language_code, is_generated, translation_languages):
+    def __init__(self, http_client, video_id, url, language, language_code, is_generated, translation_languages, timeout=None):
         """
         You probably don't want to initialize this directly. Usually you'll access Transcript objects using a
         TranscriptList.
 
         :param http_client: http client which is used to make the transcript retrieving http calls
         :type http_client: requests.Session
-        :param timeout: server response seconds until timeout, two-tuple specifies connect and read timeouts respectively
-        :type timeout: float or two-tuple of floats
         :param video_id: the id of the video this TranscriptList is for
         :type video_id: str
         :param url: the url which needs to be called to fetch the transcript
@@ -241,9 +239,10 @@ class Transcript():
         :param language_code:
         :param is_generated:
         :param translation_languages:
+        :param timeout: server response seconds until timeout, two-tuple specifies connect and read timeouts respectively
+        :type timeout: float or two-tuple of floats
         """
         self._http_client = http_client
-        self._timeout = timeout
         self.video_id = video_id
         self._url = url
         self.language = language
@@ -254,7 +253,8 @@ class Transcript():
             translation_language['language_code']: translation_language['language']
             for translation_language in translation_languages
         }
-
+        self._timeout = timeout
+        
     def fetch(self):
         """
         Loads the actual transcript data.
@@ -286,13 +286,13 @@ class Transcript():
 
         return Transcript(
             self._http_client,
-            self._timeout,
             self.video_id,
             '{url}&tlang={language_code}'.format(url=self._url, language_code=language_code),
             self._translation_languages_dict[language_code],
             language_code,
             True,
             [],
+            self._timeout
         )
 
 
