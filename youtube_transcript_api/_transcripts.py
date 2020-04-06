@@ -31,6 +31,7 @@ class TranscriptListFetcher():
     def fetch(self, video_id):
         return TranscriptList.build(
             self._http_client,
+            self._timeout,
             video_id,
             self._extract_captions_json(self._fetch_html(video_id), video_id)
         )
