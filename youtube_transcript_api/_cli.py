@@ -22,13 +22,19 @@ class YouTubeTranscriptCli():
             proxies = {"http": parsed_args.http_proxy, "https": parsed_args.https_proxy}
 
         cookies = parsed_args.cookies
+        
+        max_retries = parsed_args.max_retries
+        if type(parsed_args.max_retries)==list:
+            max_retries = tuple(parsed_args.max_retries)
+        
+        timeout = parsed_args.timeout
 
         transcripts = []
         exceptions = []
 
         for video_id in parsed_args.video_ids:
             try:
-                transcripts.append(self._fetch_transcript(parsed_args, proxies, cookies, video_id))
+                transcripts.append(self._fetch_transcript(parsed_args, proxies, cookies, max_retries, timeout, video_id))
             except Exception as exception:
                 exceptions.append(exception)
 
@@ -37,8 +43,8 @@ class YouTubeTranscriptCli():
             + ([json.dumps(transcripts) if parsed_args.json else pprint.pformat(transcripts)] if transcripts else [])
         )
 
-    def _fetch_transcript(self, parsed_args, proxies, cookies, video_id):
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies, cookies=cookies)
+    def _fetch_transcript(self, parsed_args, proxies, cookies, max_retries, timeout, video_id):
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies, cookies=cookies, max_retries=max_retries, timeout=timeout)
 
         if parsed_args.list_transcripts:
             return str(transcript_list)
@@ -130,5 +136,18 @@ class YouTubeTranscriptCli():
             default=None,
             help='The cookie file that will be used for authorization with youtube.'
         )
-            
+        parser.add_argument(
+            '--max-retries',
+            default=None,
+            type=int,
+            help='The maximum number of retries to be made for requests.'
+        )
+        parser.add_argument(
+            '--timeout', 
+            nargs='+',
+            default=None,
+            type=float,
+            help='The number of seconds until a request will timeout. Passing two arguments will'
+                 'specify the connect and read timeouts respectively.'
+        )
         return parser.parse_args(self._args)
